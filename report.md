@@ -24,7 +24,7 @@ The system uses DVC to track synthetic equipment data, MLflow to record training
 2. **Quality gate test:** The quality_gate task deliberately failed after MLflow evaluation. The F1 value of 0.789 exceeded the configured 0.750 minimum; the failure was injected, not caused by a low score. Resolution: trigger without inject_failure. Neither test constitutes evidence of model degradation.
 3. **Tracking service interruption:** An early normal run could not contact MLflow on port 5000 and retried the evaluation task. Restarting the MLflow server allowed that run to complete successfully. This was a service availability issue, not a data or model quality failure.
 4. **Deployment lookup:** The first audit reported no Deployment because its tool queried a metadata label missing from the Deployment manifest. Direct kubectl output showed 2/2 available Pods. The tool now selects the approved Deployment by name and the manifest includes the label.
-5. **Provider request:** The first Groq-backed requests returned a generic provider error before tool execution. Without the HTTP status and provider error code, the exact cause could not be established. The client now exposes those safe identifiers while suppressing response messages that could contain credentials.
+5. **Provider request:** The first Groq-backed requests returned a generic provider error before tool execution. The improved client reported HTTP 403. A simple authenticated request with the same key and model returned HTTP 200, so the key and model work; the larger agent request is the remaining variable. The agent now offers only relevant tools in each request, following Groq's tool-use guidance. A successful provider-backed conversation has not yet been recorded.
 
 ## Demonstration scenarios
 

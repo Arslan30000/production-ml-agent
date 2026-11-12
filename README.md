@@ -144,7 +144,7 @@ The Kubernetes tools are restricted to namespace mlops-agent. Only the equipment
 
 ## Conversational agent
 
-The natural-language interface uses an OpenAI-compatible Chat Completions endpoint and local structured tools. Set the provider's key in the shell; never save it in Git. The default endpoint is Groq and the default model is openai/gpt-oss-20b. Set OPENAI_BASE_URL and OPENAI_MODEL to use a different compatible provider.
+The natural-language interface uses an OpenAI-compatible Chat Completions endpoint and local structured tools. It offers the model a small set of tools relevant to each question while retaining the full local tool registry. Set the provider's key in the shell; never save it in Git. The default endpoint is Groq and the default model is openai/gpt-oss-20b. Set OPENAI_BASE_URL and OPENAI_MODEL to use a different compatible provider.
 
 ~~~bash
 read -rsp 'API key: ' OPENAI_API_KEY; echo
@@ -170,5 +170,5 @@ python -m ruff check --select E4,E7,E9,F agent api dags scripts tests training
 
 Tests cover tool selection, multiple tool calls, invalid arguments, service failures, timeouts, approval gates, redaction, provenance, training, and API inference. Tests that need the model artifact skip until dvc pull restores it. External service tests use mocks in CI.
 
-The dataset and DVC remote are local demonstrations. The deployment image is not yet linked to an MLflow run ID, so a healthy Deployment alone cannot prove that the best MLflow candidate is serving traffic. Airflow standalone and its simple authentication are for local development. A shared DVC remote, durable tracking backend, tagged model image, and production authentication are future improvements.
+The dataset and DVC remote are local demonstrations. The deployment image is not linked to an MLflow run ID, so a healthy Deployment alone cannot prove that the best MLflow candidate is serving traffic. Airflow standalone and its simple authentication are for local development.
 

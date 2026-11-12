@@ -6,7 +6,7 @@ from urllib.error import HTTPError
 from unittest.mock import Mock
 
 from agent.audit import production_audit
-from agent.orchestrator import Agent, Tool, build_tools
+from agent.orchestrator import Agent, Tool, build_tools, select_tools
 from agent.provider import ChatProvider, ProviderError
 
 
@@ -26,6 +26,17 @@ class StubProvider:
 
 
 class AgentTests(unittest.TestCase):
+    def test_relevant_tool_selection_keeps_integrated_request_bounded(self):
+        dvc, mlflow, airflow, kube = Mock(), Mock(), Mock(), Mock()
+        all_tools = {t.name: t for t in build_tools(dvc, mlflow, airflow, kube)}
+        selected = select_tools("Find the best model, dataset version, deployment health "
+                                "and Airflow status", all_tools)
+        names = {tool.name for tool in selected}
+        self.assertLessEqual(len(selected), 10)
+        self.assertTrue({"mlflow_best_run", "dvc_current_version", "k8s_deployed_version",
+                         "k8s_diagnose", "airflow_recent_runs"} <= names)
+        self.assertNotIn("airflow_trigger_training", names)
+
     def test_selects_and_executes_all_four_service_tools(self):
         provider = StubProvider(
             {"tool_calls": [call("mlflow_best_run", {"experiment_id": "1"}, "a"),

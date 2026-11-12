@@ -158,6 +158,56 @@ def build_tools(dvc: Any, mlflow: Any, airflow: Any, kubernetes: Any) -> list[To
     ]
 
 
+CORE_TOOLS = ("mlflow_best_run", "dvc_current_version", "k8s_deployed_version",
+              "k8s_diagnose", "airflow_recent_runs")
+
+
+def select_tools(question: str, tools: dict[str, Tool]) -> list[Tool]:
+    """Keep provider requests small while retaining the full local tool registry."""
+    if len(tools) <= 10:
+        return list(tools.values())
+    q = question.lower()
+    names: set[str] = set()
+    if any(term in q for term in ("dataset", "data-v", "dvc", "provenance", "version")):
+        names.update(("dvc_list_datasets", "dvc_current_version", "dvc_detect_changes"))
+        if "compare" in q or "versus" in q:
+            names.add("dvc_compare_versions")
+        if "reproduc" in q or "restor" in q:
+            names.add("dvc_reproduction_plan")
+    if any(term in q for term in ("model", "mlflow", "experiment", "metric", "f1", "run")):
+        names.update(("mlflow_list_runs", "mlflow_best_run", "mlflow_run_details"))
+        if "list" in q or "which experiment" in q:
+            names.add("mlflow_list_experiments")
+        if "compare" in q:
+            names.update(("mlflow_compare_runs", "mlflow_compare_experiments"))
+        if "registry" in q or "registered" in q:
+            names.add("mlflow_model_versions")
+    if any(term in q for term in ("airflow", "dag", "workflow", "training", "retrain",
+                                 "quality gate", "failed task")):
+        names.update(("airflow_recent_runs", "airflow_run_status", "airflow_failed_tasks"))
+        if "list" in q and "dag" in q:
+            names.add("airflow_list_dags")
+        if "log" in q or "explain" in q or "diagnos" in q:
+            names.add("airflow_task_log")
+        if "trigger" in q or "start training" in q:
+            names.add("airflow_trigger_training")
+    if any(term in q for term in ("deploy", "pod", "kubernetes", "k8s", "cluster",
+                                 "health", "inference", "service", "restart")):
+        names.update(("k8s_deployed_version", "k8s_diagnose", "k8s_workloads"))
+        if "service" in q:
+            names.add("k8s_services")
+        if "log" in q:
+            names.add("k8s_pod_logs")
+        if "restart" in q:
+            names.add("k8s_restart_deployment")
+    if not names:
+        names.update(CORE_TOOLS)
+    if len([name for name in CORE_TOOLS if name in names]) >= 3:
+        names.update(CORE_TOOLS)
+    ordered = [*CORE_TOOLS, *tools]
+    return [tools[name] for name in dict.fromkeys(ordered) if name in names and name in tools][:10]
+
+
 class Agent:
     def __init__(self, provider: Any, tools: list[Tool], *, approved_actions: set[str] | None = None,
                  max_rounds: int = 8, max_calls: int = 16):
@@ -166,11 +216,12 @@ class Agent:
         self.approved_actions = approved_actions or set()
         self.max_rounds, self.max_calls = max_rounds, max_calls
 
-    def _call(self, name: str, raw_args: str | dict, request_id: str) -> dict:
+    def _call(self, name: str, raw_args: str | dict, request_id: str,
+              allowed_names: set[str] | None = None) -> dict:
         started = time.monotonic()
         status = "error"
         try:
-            if name not in self.tools:
+            if name not in self.tools or (allowed_names is not None and name not in allowed_names):
                 raise ValueError("unapproved tool")
             tool = self.tools[name]
             args = json.loads(raw_args) if isinstance(raw_args, str) else raw_args
@@ -227,7 +278,9 @@ class Agent:
             {"role": "user", "content": question},
         ]
         evidence: list[dict] = []
-        definitions = [t.schema() for t in self.tools.values()]
+        selected = select_tools(question, self.tools)
+        allowed_names = {tool.name for tool in selected}
+        definitions = [tool.schema() for tool in selected]
         for _ in range(self.max_rounds):
             message = self.provider.complete(messages, definitions)
             calls = message.get("tool_calls") or []
@@ -258,9 +311,11 @@ class Agent:
                             "evidence": evidence, "complete": False}
                 function = call.get("function") or {}
                 name = function.get("name", "")
-                result = self._call(name, function.get("arguments", "{}"), request_id)
+                result = self._call(name, function.get("arguments", "{}"), request_id,
+                                    allowed_names)
                 evidence.append({"tool": name, "result": result})
                 messages.append({"role": "tool", "tool_call_id": call.get("id", "unknown"),
                                  "content": json.dumps(result, default=str)[:12000]})
         return {"request_id": request_id, "answer": "Reasoning limit reached; inspect the evidence.",
                 "evidence": evidence, "complete": False}
+
