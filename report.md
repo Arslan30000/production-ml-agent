@@ -14,9 +14,9 @@ The system uses DVC to track synthetic equipment data, MLflow to record training
 | Normal workflow | Airflow run manual__2026-11-12T13:33:11.028062+00:00 completed success. The validation, preprocessing, training, MLflow evaluation, and quality gate tasks ran. |
 | Injected validation failure | Run manual__2026-11-12T13:33:12.546233+00:00 completed failed. The validation task raised the injected error on three attempts; downstream tasks did not run. |
 | Injected quality gate failure | Run manual__2026-11-12T13:33:12.769980+00:00 completed failed. Evaluation logged a model, then quality_gate raised the injected error on three attempts; its recorded F1 was 0.789. |
-| Automated checks | 34 tests passed in WSL after installing Airflow and FastAPI. The final GitHub Actions run passed Ruff and pytest: 40 passed, 1 skipped, and 3 subtests passed. The skipped API test needs the DVC model artifact, which is kept in local remote storage. |
+| Automated checks | 34 tests passed in WSL after installing Airflow and FastAPI. GitHub Actions passes Ruff and pytest. Its skipped API test needs the DVC model artifact, which is kept in local remote storage. |
 | Kubernetes deployment | Minikube reports equipment-api 2/2 available; both Pods were Running and ready with zero restarts. The Service was present, and the port-forwarded readiness, version, and prediction endpoints responded. The served model reported dataset SHA-256 ff4d4de28f7c0b5d9e742cdca56273660406ee31df96a3e5031fde04f956ed24. |
-| LLM conversations | A Groq key was supplied locally and the deterministic four-service audit ran with all five checks returning data. Provider-backed conversations failed before a tool call; five successful conversations have not been captured. The provider now reports a safe HTTP status and error code to help diagnose this. |
+| LLM conversations | Groq rejected the full agent request with HTTP 403, although a simple authenticated model request succeeded. Gemini 3 Flash Preview then completed the integrated conversation (request 10e8ff28889a4b4489355340fe4ec87c). Nine tool calls returned recorded data across MLflow, DVC, Kubernetes, and Airflow. Four other distinct provider-backed demonstration scenarios remain to be run. |
 
 ## Failure investigations
 
@@ -24,7 +24,7 @@ The system uses DVC to track synthetic equipment data, MLflow to record training
 2. **Quality gate test:** The quality_gate task deliberately failed after MLflow evaluation. The F1 value of 0.789 exceeded the configured 0.750 minimum; the failure was injected, not caused by a low score. Resolution: trigger without inject_failure. Neither test constitutes evidence of model degradation.
 3. **Tracking service interruption:** An early normal run could not contact MLflow on port 5000 and retried the evaluation task. Restarting the MLflow server allowed that run to complete successfully. This was a service availability issue, not a data or model quality failure.
 4. **Deployment lookup:** The first audit reported no Deployment because its tool queried a metadata label missing from the Deployment manifest. Direct kubectl output showed 2/2 available Pods. The tool now selects the approved Deployment by name and the manifest includes the label.
-5. **Provider request:** The first Groq-backed requests returned a generic provider error before tool execution. The improved client reported HTTP 403. A simple authenticated request with the same key and model returned HTTP 200, so the key and model work; the larger agent request is the remaining variable. The agent now offers only relevant tools in each request, following Groq's tool-use guidance. A successful provider-backed conversation has not yet been recorded.
+5. **Provider request:** The first Groq-backed requests returned a generic provider error before tool execution. The improved client reported HTTP 403. A simple authenticated request with the same key and model returned HTTP 200. The agent now offers only relevant tools in each request. Gemini's OpenAI-compatible endpoint successfully completed the integrated conversation, so the provider issue is limited to Groq's rejection of this agent request.
 
 ## Demonstration scenarios
 
@@ -33,10 +33,10 @@ The system uses DVC to track synthetic equipment data, MLflow to record training
 | Dataset history | "List tracked datasets, compare data-v1 and data-v2, and give the commands to reproduce data-v1." | The DVC diff and isolated data-v1 restoration were run locally. |
 | Experiment selection | "Compare recent F1 runs, show the best candidate and its recorded dataset reference." | Three MLflow runs and their provenance were queried locally. |
 | Workflow failure | "Find the failed validation and quality gate runs, inspect failed tasks, and explain what happened." | Two injected Airflow runs failed at their intended tasks; a normal run succeeded. |
-| Deployment diagnosis | "Check the inference Deployment, Pod health, and deployed image; explain any restart or readiness issue." | A live two-replica rollout, zero-restart Pods, and inference HTTP response were observed. The corrected agent lookup still needs a live rerun. |
-| Integrated decision | "Find the best recent model, identify its dataset version, check deployment health and Airflow status, and assess retraining." | The deterministic audit retrieved MLflow, DVC, Kubernetes, and Airflow data and did not trigger retraining. A provider-backed conversation was not captured. |
+| Deployment diagnosis | "Check the inference Deployment, Pod health, and deployed image; explain any restart or readiness issue." | A live two-replica rollout, zero-restart Pods, and inference HTTP response were observed. The integrated Gemini conversation also retrieved the Deployment as 2/2 available and reported zero unhealthy Pods. The standalone conversation for this scenario remains open. |
+| Integrated decision | "Find the best recent model, identify its dataset version, check deployment health and Airflow status, and assess retraining." | Gemini executed nine successful tool calls. The answer identified seed-44 run 3c6ecf539a474e9f9e628b1108d23a31 (F1 0.800), DVC MD5 57c399e79e05a3e6e0fe747af2ad372d, a 2/2 available Deployment with zero unhealthy Pods, and no automatic retraining. The deployed image remains unlinked to the MLflow run ID. |
 
-These prompts can be submitted through `python -m agent.main 'PROMPT'` when the provider and services are available. The corresponding direct checks are:
+The four remaining prompts can be submitted through `python -m agent.main 'PROMPT'` with the running services and Gemini key. The corresponding direct checks are:
 
 ```bash
 python -m agent.tools.dvc_tools version

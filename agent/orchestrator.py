@@ -63,9 +63,19 @@ def _evidence_summary(evidence: list[dict]) -> str:
                 lines.append(f"{name}: no deployment returned.")
         elif name == "airflow_recent_runs":
             runs = data.get("dag_runs", [])
-            lines.append(f"{name}: latest run {runs[0].get('dag_run_id')} "
-                         f"is {runs[0].get('state')}." if runs else
-                         f"{name}: no runs returned.")
+            if runs:
+                latest = runs[0]
+                failure = (latest.get("conf") or {}).get("inject_failure")
+                suffix = f" (injected {failure} test)" if failure else ""
+                lines.append(f"{name}: latest run {latest.get('dag_run_id')} "
+                             f"is {latest.get('state')}{suffix}.")
+                normal = next((run for run in runs if not (run.get("conf") or {}).get(
+                    "inject_failure")), None)
+                if normal and normal is not latest:
+                    lines.append(f"Latest non-injected run {normal.get('dag_run_id')} "
+                                 f"is {normal.get('state')}.")
+            else:
+                lines.append(f"{name}: no runs returned.")
         elif name == "k8s_diagnose":
             lines.append(f"{name}: {len(data.get('unhealthy', []))} unhealthy Pod(s) reported.")
         elif name == "airflow_failed_tasks":

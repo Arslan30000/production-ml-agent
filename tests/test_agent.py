@@ -37,6 +37,19 @@ class AgentTests(unittest.TestCase):
                          "k8s_diagnose", "airflow_recent_runs"} <= names)
         self.assertNotIn("airflow_trigger_training", names)
 
+    def test_integrated_answer_distinguishes_injected_failure(self):
+        provider = StubProvider({"tool_calls": [call("airflow_recent_runs")]},
+                                {"content": "Latest training failed."})
+        airflow = Mock()
+        airflow.recent_runs.return_value = {"dag_runs": [
+            {"dag_run_id": "injected", "state": "failed", "conf": {
+                "inject_failure": "quality_gate"}},
+            {"dag_run_id": "normal", "state": "success", "conf": {}}]}
+        tools = [Tool("airflow_recent_runs", "inspect", airflow.recent_runs, {})]
+        answer = Agent(provider, tools).run("Check Airflow runs")["answer"]
+        self.assertIn("injected quality_gate test", answer)
+        self.assertIn("Latest non-injected run normal is success", answer)
+
     def test_selects_and_executes_all_four_service_tools(self):
         provider = StubProvider(
             {"tool_calls": [call("mlflow_best_run", {"experiment_id": "1"}, "a"),
@@ -155,6 +168,7 @@ class AgentTests(unittest.TestCase):
         self.assertIn("rate_limit_exceeded", str(caught.exception))
         self.assertIn("retry after 12s", str(caught.exception))
         self.assertNotIn("secret-token", str(caught.exception))
+        error.close()
 
     def test_audit_labels_injected_failure_and_reports_last_normal_run(self):
         dvc, mlflow, airflow, kube = Mock(), Mock(), Mock(), Mock()
