@@ -90,7 +90,8 @@ class AgentTests(unittest.TestCase):
         try:
             result = Agent(StubProvider({"tool_calls": [call("inspect")]},
                                         {"content": "done"}),
-                           [Tool("inspect", "inspect", lambda: {"log": "Bearer secret123"}, {})]
+                           [Tool("inspect", "inspect", lambda: {
+                               "log": "Bearer secret123", "api_key": "hidden456"}, {})]
                            ).run("Inspect", request_id="request-1")
         finally:
             logger.removeHandler(handler)
@@ -102,6 +103,7 @@ class AgentTests(unittest.TestCase):
         self.assertIn("duration_ms", entry)
         self.assertNotIn("secret123", stream.getvalue())
         self.assertNotIn("secret123", str(result))
+        self.assertNotIn("hidden456", str(result))
 
     def test_audit_correlates_recorded_provenance_without_automatic_retraining(self):
         dvc, mlflow, airflow, kube = Mock(), Mock(), Mock(), Mock()

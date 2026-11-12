@@ -16,7 +16,9 @@ LOG = logging.getLogger("production_ml_agent")
 
 def _redact(value: Any) -> Any:
     if isinstance(value, dict):
-        return {key: _redact(item) for key, item in value.items()}
+        return {key: ("[REDACTED]" if re.search(
+            r"(?i)(authorization|password|token|api[_-]?key)", str(key)) else _redact(item))
+                for key, item in value.items()}
     if isinstance(value, list):
         return [_redact(item) for item in value]
     if isinstance(value, str):
@@ -193,7 +195,8 @@ class Agent:
         except Exception:
             return {"ok": False, "error": "service_unavailable"}
         finally:
-            LOG.info(json.dumps({"request_id": request_id, "tool_name": name,
+            LOG.info(json.dumps({"request_id": request_id,
+                                 "tool_name": name if name in self.tools else "unapproved_tool",
                                  "status": status,
                                  "duration_ms": round((time.monotonic() - started) * 1000, 2)}))
 

@@ -24,7 +24,7 @@ source .venv/bin/activate
 python -m pip install --upgrade pip
 python -m pip install -e '.[dev,airflow,api]'
 python -m pytest -q
-python -m ruff check agent api dags scripts tests training
+python -m ruff check --select E4,E7,E9,F agent api dags scripts tests training
 ~~~
 
 Python 3.11 or newer is required. The normal CI job does not start external services; service responses are mocked in its tests.
@@ -165,7 +165,7 @@ The --audit mode checks all four services without an LLM key and reports facts, 
 
 ~~~bash
 python -m pytest -q
-python -m ruff check agent api dags scripts tests training
+python -m ruff check --select E4,E7,E9,F agent api dags scripts tests training
 ~~~
 
 Tests cover tool selection, multiple tool calls, invalid arguments, service failures, timeouts, approval gates, redaction, provenance, training, and API inference. Tests that need the model artifact skip until dvc pull restores it. External service tests use mocks in CI.

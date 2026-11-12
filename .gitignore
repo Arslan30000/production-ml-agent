@@ -24,6 +24,7 @@ airflow-output/
 airflow-home/
 *.generated
 *.log
+*.jsonl
 data/raw/*.csv
 
 # Editors and OS

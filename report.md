@@ -14,7 +14,7 @@ The system uses DVC to track synthetic equipment data, MLflow to record training
 | Normal workflow | Airflow run manual__2026-11-12T13:33:11.028062+00:00 completed success. The validation, preprocessing, training, MLflow evaluation, and quality gate tasks ran. |
 | Injected validation failure | Run manual__2026-11-12T13:33:12.546233+00:00 completed failed. The validation task raised the injected error on three attempts; downstream tasks did not run. |
 | Injected quality gate failure | Run manual__2026-11-12T13:33:12.769980+00:00 completed failed. Evaluation logged a model, then quality_gate raised the injected error on three attempts; its recorded F1 was 0.789. |
-| Automated checks | 34 tests passed in WSL after installing Airflow and FastAPI. Six additional agent/audit tests were added for the final stage; CI runs pytest and Ruff on pull requests. |
+| Automated checks | 34 tests passed in WSL after installing Airflow and FastAPI. Seven additional agent/audit tests were added for the final stage; CI runs pytest and Ruff on pull requests. |
 | Kubernetes deployment | Manifests and mocked diagnostics are present. A live cluster rollout, Pod status, and API response have not been supplied or verified. |
 | LLM conversations | The local tool-calling loop and mocked four-service selection test run. Five real provider-backed conversations have not been captured because no API key was supplied in this project session. |
 

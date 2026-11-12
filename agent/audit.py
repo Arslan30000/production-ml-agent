@@ -3,6 +3,9 @@
 from __future__ import annotations
 
 import uuid
+import json
+import logging
+import time
 from typing import Any
 
 
@@ -18,10 +21,16 @@ def production_audit(dvc: Any, mlflow: Any, airflow: Any, kubernetes: Any,
     )
     evidence = {}
     for name, function in checks:
+        started = time.monotonic()
         try:
             evidence[name] = {"ok": True, "data": function()}
         except Exception:
             evidence[name] = {"ok": False, "error": "service_unavailable"}
+        finally:
+            logging.getLogger("production_ml_agent").info(json.dumps({
+                "request_id": request_id, "tool_name": name,
+                "status": "ok" if evidence[name]["ok"] else "error",
+                "duration_ms": round((time.monotonic() - started) * 1000, 2)}))
 
     facts, unknowns = [], []
     best = evidence["mlflow_best_run"]
