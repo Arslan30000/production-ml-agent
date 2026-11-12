@@ -3,6 +3,8 @@ kind: Deployment
 metadata:
   name: equipment-api
   namespace: mlops-agent
+  labels:
+    app: equipment-api
 spec:
   replicas: 2
   selector:
@@ -41,3 +43,4 @@ spec:
             limits:
               cpu: 500m
               memory: 256Mi
+

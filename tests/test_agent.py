@@ -2,10 +2,12 @@ import json
 import logging
 import unittest
 from io import StringIO
+from urllib.error import HTTPError
 from unittest.mock import Mock
 
 from agent.audit import production_audit
 from agent.orchestrator import Agent, Tool, build_tools
+from agent.provider import ChatProvider, ProviderError
 
 
 def call(name, args=None, call_id="1"):
@@ -128,6 +130,36 @@ class AgentTests(unittest.TestCase):
         self.assertFalse(result["retraining_triggered"])
         self.assertIn("not linked", " ".join(result["unknowns"]))
 
+    def test_provider_error_shows_safe_status_without_echoing_secret(self):
+        from unittest.mock import patch
+
+        error = HTTPError("https://api.groq.com/openai/v1/chat/completions", 429,
+                          "secret-token", {"Retry-After": "12"}, StringIO(json.dumps({
+                              "error": {"code": "rate_limit_exceeded",
+                                        "message": "Bearer secret-token"}})))
+        with patch("agent.provider.urlopen", side_effect=error):
+            with self.assertRaises(ProviderError) as caught:
+                ChatProvider(api_key="secret-token").complete([], [])
+        self.assertIn("HTTP 429", str(caught.exception))
+        self.assertIn("rate_limit_exceeded", str(caught.exception))
+        self.assertIn("retry after 12s", str(caught.exception))
+        self.assertNotIn("secret-token", str(caught.exception))
+
+    def test_audit_labels_injected_failure_and_reports_last_normal_run(self):
+        dvc, mlflow, airflow, kube = Mock(), Mock(), Mock(), Mock()
+        mlflow.best_run.return_value = {"candidate": None}
+        dvc.current_version.return_value = {"git_commit": "abc"}
+        kube.deployed_version.return_value = {"deployments": []}
+        kube.diagnose.return_value = {"unhealthy": []}
+        airflow.recent_runs.return_value = {"dag_runs": [
+            {"dag_run_id": "injected", "state": "failed", "conf": {
+                "inject_failure": "quality_gate"}},
+            {"dag_run_id": "normal", "state": "success", "conf": {}}]}
+        result = production_audit(dvc, mlflow, airflow, kube, experiment_id="1")
+        self.assertIn("injected quality_gate test", " ".join(result["facts"]))
+        self.assertIn("Latest non-injected run normal: success", " ".join(result["facts"]))
+
 
 if __name__ == "__main__":
     unittest.main()
+

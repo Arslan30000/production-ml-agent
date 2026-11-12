@@ -71,7 +71,15 @@ def production_audit(dvc: Any, mlflow: Any, airflow: Any, kubernetes: Any,
         runs = workflows["data"].get("dag_runs", [])
         if runs:
             latest = runs[0]
-            facts.append(f"Latest Airflow training run {latest['dag_run_id']}: {latest['state']}.")
+            failure = (latest.get("conf") or {}).get("inject_failure")
+            suffix = f" (injected {failure} test)" if failure else ""
+            facts.append(f"Latest Airflow training run {latest['dag_run_id']}: "
+                         f"{latest['state']}{suffix}.")
+            normal = next((run for run in runs if not (run.get("conf") or {}).get(
+                "inject_failure")), None)
+            if normal and normal is not latest:
+                facts.append(f"Latest non-injected run {normal['dag_run_id']}: "
+                             f"{normal['state']}.")
         else:
             unknowns.append("No recent Airflow runs were returned.")
     else:
@@ -87,3 +95,4 @@ def production_audit(dvc: Any, mlflow: Any, airflow: Any, kubernetes: Any,
     return {"request_id": request_id, "facts": facts, "unknowns": unknowns,
             "recommendation": recommendation, "evidence": evidence,
             "retraining_triggered": False}
+

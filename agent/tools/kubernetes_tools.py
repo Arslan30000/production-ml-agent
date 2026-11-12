@@ -34,8 +34,11 @@ class KubernetesTools:
             raise KubernetesToolError("kubectl returned invalid JSON") from exc
 
     def workloads(self) -> dict:
-        return {"pods": self._run(["get", "pods", "-l", "app=equipment-api", "-o", "json"]),
-                "deployments": self._run(["get", "deployments", "-l", "app=equipment-api", "-o", "json"])}
+        pods = self._run(["get", "pods", "-l", "app=equipment-api", "-o", "json"])
+        deployments = self._run(["get", "deployments", "-o", "json"])
+        deployments["items"] = [item for item in deployments.get("items", [])
+                                if item.get("metadata", {}).get("name") == "equipment-api"]
+        return {"pods": pods, "deployments": deployments}
 
     def services(self) -> dict:
         return self._run(["get", "services", "-l", "app=equipment-api", "-o", "json"])
@@ -86,3 +89,4 @@ TOOL_SCHEMAS = [
     {"name": "k8s_deployed_version", "inputs": {}},
     {"name": "k8s_restart_deployment", "inputs": {"name": "string", "confirmed": "boolean"}},
 ]
+

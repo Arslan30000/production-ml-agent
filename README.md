@@ -140,7 +140,7 @@ curl -fsS -X POST http://127.0.0.1:8000/predict \
   -d '{"temperature_c":80,"vibration_mm_s":4,"load_pct":65}'
 ~~~
 
-The Kubernetes tools are restricted to namespace mlops-agent. Only the equipment-api Deployment can be restarted, and that action requires explicit approval. Kubernetes deployment output has not yet been supplied for this checkout, so live Pod health is not claimed in the report.
+The Kubernetes tools are restricted to namespace mlops-agent. Only the equipment-api Deployment can be restarted, and that action requires explicit approval. A live Minikube rollout reported two ready Pods with zero restarts, and the port-forwarded inference API responded. The report records the observed values.
 
 ## Conversational agent
 
@@ -171,3 +171,4 @@ python -m ruff check --select E4,E7,E9,F agent api dags scripts tests training
 Tests cover tool selection, multiple tool calls, invalid arguments, service failures, timeouts, approval gates, redaction, provenance, training, and API inference. Tests that need the model artifact skip until dvc pull restores it. External service tests use mocks in CI.
 
 The dataset and DVC remote are local demonstrations. The deployment image is not yet linked to an MLflow run ID, so a healthy Deployment alone cannot prove that the best MLflow candidate is serving traffic. Airflow standalone and its simple authentication are for local development. A shared DVC remote, durable tracking backend, tagged model image, and production authentication are future improvements.
+

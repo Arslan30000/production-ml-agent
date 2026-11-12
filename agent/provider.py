@@ -2,6 +2,7 @@
 
 import json
 import os
+import re
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -37,6 +38,21 @@ class ChatProvider:
             if not isinstance(message, dict):
                 raise ValueError("missing message")
             return message
-        except (HTTPError, URLError, TimeoutError, ValueError, KeyError, IndexError) as exc:
-            # Provider response bodies can contain prompts and tokens; avoid exposing them.
-            raise ProviderError("LLM provider unavailable or returned an invalid response") from exc
+        except HTTPError as exc:
+            # Read only structured error identifiers; provider messages can echo prompts or secrets.
+            try:
+                error = json.load(exc).get("error", {})
+                code = error.get("code") or error.get("type")
+                code = code if isinstance(code, str) and re.fullmatch(r"[a-zA-Z0-9_-]{1,60}", code) else None
+            except (ValueError, TypeError, AttributeError):
+                code = None
+            suffix = f", code={code}" if code else ""
+            retry = exc.headers.get("Retry-After") if exc.headers else None
+            if exc.code == 429 and retry and re.fullmatch(r"[0-9]{1,5}", retry):
+                suffix += f", retry after {retry}s"
+            raise ProviderError(f"LLM provider HTTP {exc.code}{suffix}") from exc
+        except (URLError, TimeoutError) as exc:
+            raise ProviderError("LLM provider connection unavailable or timed out") from exc
+        except (ValueError, KeyError, IndexError, TypeError) as exc:
+            raise ProviderError("LLM provider returned an invalid response") from exc
+

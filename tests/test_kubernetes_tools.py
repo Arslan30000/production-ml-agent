@@ -23,6 +23,23 @@ class KubernetesToolTests(unittest.TestCase):
         for call in runner.call_args_list:
             self.assertEqual(call.args[0][:3], ["kubectl", "-n", "mlops-agent"])
 
+    def test_deployment_lookup_handles_missing_metadata_label(self):
+        deployment = {"metadata": {"name": "equipment-api"},
+                      "spec": {"replicas": 2, "template": {"spec": {"containers": [
+                          {"image": "production-ml-agent:local"}]}}},
+                      "status": {"availableReplicas": 2}}
+        other = {"metadata": {"name": "unrelated"}}
+        runner = Mock(side_effect=[
+            subprocess.CompletedProcess([], 0, '{"items":[]}', ""),
+            subprocess.CompletedProcess([], 0, json.dumps({"items": [deployment, other]}), ""),
+            subprocess.CompletedProcess([], 0, '{"data":{"APP_VERSION":"0.1.0"}}', "")])
+        result = KubernetesTools(runner=runner).deployed_version()
+        self.assertEqual(result["deployments"], [{"name": "equipment-api", "desired": 2,
+                                                  "available": 2,
+                                                  "images": ["production-ml-agent:local"]}])
+        self.assertEqual(runner.call_args_list[1].args[0][3:],
+                         ["get", "deployments", "-o", "json"])
+
     def test_diagnosis_reports_unready_pod_and_restart(self):
         pod = {"metadata": {"name": "equipment-api-abc"}, "status": {
             "phase": "Running", "containerStatuses": [{"ready": False, "restartCount": 2}]}}
@@ -41,3 +58,4 @@ class KubernetesToolTests(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
