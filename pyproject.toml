@@ -7,7 +7,7 @@ name = "production-ml-agent"
 version = "0.1.0"
 description = "Evidence-driven MLOps operations agent"
 requires-python = ">=3.11"
-dependencies = ["dvc>=3,<5"]
+dependencies = ["dvc>=3,<5", "mlflow>=3,<4"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<10", "ruff>=0.8,<1"]

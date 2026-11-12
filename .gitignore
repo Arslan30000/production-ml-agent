@@ -17,6 +17,8 @@ kubeconfig
 # Local outputs
 logs/
 mlruns/
+mlartifacts/
+mlflow.db*
 artifacts/
 *.log
 data/raw/*.csv

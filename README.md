@@ -65,8 +65,47 @@ python -m agent.tools.dvc_tools reproduce HEAD~1
 
 ## Verification and next stages
 
-The tests cover deterministic generation and training, command selection, invalid references, tool failures, and timeouts. Live DVC version and remote evidence still needs a Git checkout with DVC installed. I will record real hashes and screenshots when that runs.
+I committed `data-v1` and `data-v2`, compared their DVC hashes, and restored `data-v1` in an isolated worktree. The restored dataset's SHA-256 matched the original baseline. My DVC remote is local to this machine, so another computer needs the remote folder to fetch these objects.
 
-Next I will add MLflow tracking, an Airflow DAG, FastAPI on Kubernetes, and then the unified agent, CI, and final report.
+## Stage 2: MLflow experiments
+
+I install the updated project dependencies in `~/MLOPS/A3`, with the virtual environment active:
+
+```bash
+cd ~/MLOPS/A3
+python -m pip install -e '.[dev]'
+pytest -q
+```
+
+In a second WSL terminal I start the local tracking server, leaving it running:
+
+```bash
+cd ~/MLOPS/A3
+source .venv/bin/activate
+mlflow server --host 127.0.0.1 --port 5000
+```
+
+Back in the first terminal I log multiple real runs using the current committed DVC dataset. Every run stores F1, accuracy, precision, recall, the train/test split, the model and metrics JSON artifacts, the dataset SHA-256, the DVC MD5, and the Git commit containing the dataset pointer.
+
+```bash
+export MLFLOW_TRACKING_URI=http://127.0.0.1:5000
+python -m training.log_experiment --seed 42
+python -m training.log_experiment --seed 43
+python -m training.log_experiment --seed 44
+python -m agent.mlflow_cli experiments
+```
+
+I take the returned experiment ID and run IDs from the output, then inspect and compare them:
+
+```bash
+python -m agent.mlflow_cli runs EXPERIMENT_ID
+python -m agent.mlflow_cli best EXPERIMENT_ID --metric f1
+python -m agent.mlflow_cli details RUN_ID
+python -m agent.mlflow_cli compare RUN_ID_1 RUN_ID_2 --metric f1
+```
+
+I can open `http://127.0.0.1:5000` to inspect the same runs in the MLflow UI. A high F1 score chooses a candidate, but it does not by itself mean the model is ready to deploy. The model registry tool returns registered versions if I later register a model; an empty list is valid while none are registered.
+
+Next I will add the Airflow DAG, FastAPI on Kubernetes, and then the unified agent, CI, and final report.
 
 
