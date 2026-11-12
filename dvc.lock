@@ -1,0 +1,23 @@
+schema: '2.0'
+stages:
+  train:
+    cmd: python -m training.train --input data/raw/equipment.csv --model 
+      artifacts/model.json --metrics reports/metrics.json
+    deps:
+    - path: data/raw/equipment.csv
+      hash: md5
+      md5: 2c05374ccfea6e4cf247f99d0ef3aa19
+      size: 13248
+    - path: training/train.py
+      hash: md5
+      md5: 1f04bb81f2168731ca8773b3ba9d3860
+      size: 5291
+    outs:
+    - path: artifacts/model.json
+      hash: md5
+      md5: 2cde62d1394345a41b79321194164fdd
+      size: 531
+    - path: reports/metrics.json
+      hash: md5
+      md5: d4d263e249e85c4f1bc74d303ab3454a
+      size: 410

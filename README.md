@@ -46,7 +46,7 @@ dvc add data/raw/equipment.csv
 dvc remote add -d local ../production-ml-agent-dvc-storage
 dvc repro
 dvc push
-git add .dvc data/raw/equipment.csv.dvc data/raw/.gitignore dvc.yaml dvc.lock reports/metrics.json README.md
+git add .dvc .dvcignore data/raw/equipment.csv.dvc data/raw/.gitignore dvc.yaml dvc.lock reports/.gitignore README.md
 git commit -m "Track baseline dataset with DVC"
 git push
 ```
@@ -68,6 +68,5 @@ python -m agent.tools.dvc_tools reproduce HEAD~1
 The tests cover deterministic generation and training, command selection, invalid references, tool failures, and timeouts. Live DVC version and remote evidence still needs a Git checkout with DVC installed. I will record real hashes and screenshots when that runs.
 
 Next I will add MLflow tracking, an Airflow DAG, FastAPI on Kubernetes, and then the unified agent, CI, and final report.
-
 
 
