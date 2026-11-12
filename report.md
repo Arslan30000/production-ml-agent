@@ -16,7 +16,7 @@ The system uses DVC to track synthetic equipment data, MLflow to record training
 | Injected quality gate failure | Run manual__2026-11-12T13:33:12.769980+00:00 completed failed. Evaluation logged a model, then quality_gate raised the injected error on three attempts; its recorded F1 was 0.789. |
 | Automated checks | 34 tests passed in WSL after installing Airflow and FastAPI. GitHub Actions passes Ruff and pytest. Its skipped API test needs the DVC model artifact, which is kept in local remote storage. |
 | Kubernetes deployment | Minikube reports equipment-api 2/2 available; both Pods were Running and ready with zero restarts. The Service was present, and the port-forwarded readiness, version, and prediction endpoints responded. The served model reported dataset SHA-256 ff4d4de28f7c0b5d9e742cdca56273660406ee31df96a3e5031fde04f956ed24. |
-| LLM conversations | Groq rejected the full agent request with HTTP 403, although a simple authenticated model request succeeded. Gemini 3 Flash Preview then completed the integrated conversation (request 10e8ff28889a4b4489355340fe4ec87c). Nine tool calls returned recorded data across MLflow, DVC, Kubernetes, and Airflow. Four other distinct provider-backed demonstration scenarios remain to be run. |
+| LLM conversations | Groq rejected the full agent request with HTTP 403, although a simple authenticated model request succeeded. Gemini 3 Flash Preview completed the integrated conversation (request 10e8ff28889a4b4489355340fe4ec87c) with nine successful tool calls across all four services. Separate dataset history (request 8646df99e64a4e84a3d80fe1f78f5b66) and experiment selection (request b5c9dc526e57436bb06b8577afd8bf9c) conversations each completed with three successful tool calls. The next Airflow conversation hit provider HTTP 429 before tool execution. |
 
 ## Failure investigations
 
@@ -30,13 +30,13 @@ The system uses DVC to track synthetic equipment data, MLflow to record training
 
 | Scenario | Natural-language prompt | Verified state |
 | --- | --- | --- |
-| Dataset history | "List tracked datasets, compare data-v1 and data-v2, and give the commands to reproduce data-v1." | The DVC diff and isolated data-v1 restoration were run locally. |
-| Experiment selection | "Compare recent F1 runs, show the best candidate and its recorded dataset reference." | Three MLflow runs and their provenance were queried locally. |
+| Dataset history | "List tracked datasets, compare data-v1 and data-v2, and give the commands to reproduce data-v1." | Gemini completed request 8646df99e64a4e84a3d80fe1f78f5b66. Dataset listing, comparison, and reproduction-plan tools all succeeded. The DVC diff and isolated data-v1 restoration were also run locally. |
+| Experiment selection | "Compare recent F1 runs, show the best candidate and its recorded dataset reference." | Gemini completed request b5c9dc526e57436bb06b8577afd8bf9c. Three MLflow tools succeeded; the answer identified seed-44 run 3c6ecf539a474e9f9e628b1108d23a31, F1 0.800, Git commit 2bf9f6aae795428c174e43b604e8d6d3536b062b, and DVC MD5 57c399e79e05a3e6e0fe747af2ad372d. |
 | Workflow failure | "Find the failed validation and quality gate runs, inspect failed tasks, and explain what happened." | Two injected Airflow runs failed at their intended tasks; a normal run succeeded. |
 | Deployment diagnosis | "Check the inference Deployment, Pod health, and deployed image; explain any restart or readiness issue." | A live two-replica rollout, zero-restart Pods, and inference HTTP response were observed. The integrated Gemini conversation also retrieved the Deployment as 2/2 available and reported zero unhealthy Pods. The standalone conversation for this scenario remains open. |
 | Integrated decision | "Find the best recent model, identify its dataset version, check deployment health and Airflow status, and assess retraining." | Gemini executed nine successful tool calls. The answer identified seed-44 run 3c6ecf539a474e9f9e628b1108d23a31 (F1 0.800), DVC MD5 57c399e79e05a3e6e0fe747af2ad372d, a 2/2 available Deployment with zero unhealthy Pods, and no automatic retraining. The deployed image remains unlinked to the MLflow run ID. |
 
-The four remaining prompts can be submitted through `python -m agent.main 'PROMPT'` with the running services and Gemini key. The corresponding direct checks are:
+The corresponding direct checks are:
 
 ```bash
 python -m agent.tools.dvc_tools version
