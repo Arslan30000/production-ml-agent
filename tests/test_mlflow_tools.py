@@ -46,10 +46,12 @@ class MlflowToolTests(unittest.TestCase):
     def test_run_details_includes_artifacts(self):
         client = Mock()
         client.get_run.return_value = run("one", 0.8)
-        client.list_artifacts.return_value = [NS(path="model/model.json", is_dir=False,
-                                                  file_size=500)]
+        client.list_artifacts.side_effect = [
+            [NS(path="model", is_dir=True, file_size=None)],
+            [NS(path="model/model.json", is_dir=False, file_size=500)],
+        ]
         result = MlflowTools(client).run_details("one")
-        self.assertEqual(result["artifacts"][0]["path"], "model/model.json")
+        self.assertEqual(result["artifacts"][1]["path"], "model/model.json")
 
     def test_compare_rejects_duplicate_runs_and_bad_metric(self):
         client = Mock()

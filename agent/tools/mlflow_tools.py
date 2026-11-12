@@ -54,11 +54,18 @@ class MlflowTools:
             raise ValueError("invalid run ID")
         try:
             run = self.client.get_run(run_id)
-            artifacts = self.client.list_artifacts(run_id)
-            return {**_run_record(run), "artifacts": [
-                {"path": a.path, "is_dir": a.is_dir, "file_size": a.file_size}
-                for a in artifacts
-            ]}
+            pending = [None]
+            artifacts = []
+            while pending:
+                path = pending.pop()
+                for artifact in self.client.list_artifacts(run_id, path):
+                    artifacts.append({"path": artifact.path, "is_dir": artifact.is_dir,
+                                      "file_size": artifact.file_size})
+                    if artifact.is_dir:
+                        pending.append(artifact.path)
+                    if len(artifacts) > 200:
+                        raise MlflowToolError("Too many artifacts to list safely")
+            return {**_run_record(run), "artifacts": artifacts}
         except Exception as exc:
             raise MlflowToolError("MLflow run details unavailable") from exc
 
