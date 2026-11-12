@@ -33,7 +33,9 @@ class AgentTests(unittest.TestCase):
             {"content": "The selected run is a metric candidate; deployment linkage is unknown."})
         dvc, mlflow, airflow, kube = Mock(), Mock(), Mock(), Mock()
         dvc.current_version.return_value = {"git_commit": "abc"}
-        mlflow.best_run.return_value = {"candidate": {"run_id": "r1"}}
+        mlflow.best_run.return_value = {"metric": "f1", "candidate": {
+            "run_id": "r1", "metrics": {"f1": 0.8},
+            "tags": {"dataset_git_commit": "abc", "dataset_dvc_md5": "def"}}}
         airflow.recent_runs.return_value = {"dag_runs": []}
         kube.deployed_version.return_value = {"deployments": []}
         result = Agent(provider, build_tools(dvc, mlflow, airflow, kube)).run(
@@ -41,6 +43,9 @@ class AgentTests(unittest.TestCase):
         self.assertEqual([e["tool"] for e in result["evidence"]], [
             "mlflow_best_run", "dvc_current_version", "k8s_deployed_version", "airflow_recent_runs"])
         self.assertTrue(all(e["result"]["ok"] for e in result["evidence"]))
+        self.assertIn("DVC MD5 def", result["answer"])
+        self.assertIn("linkage is unknown", result["answer"])
+        self.assertIn("no training was started", result["answer"])
         self.assertFalse(airflow.trigger_training.called)
 
     def test_unavailable_tool_cannot_produce_fake_operational_result(self):

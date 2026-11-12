@@ -44,6 +44,12 @@ def _evidence_summary(evidence: list[dict]) -> str:
                 lines.append(f"{name}: run {candidate['run_id']} recorded "
                              f"{metric}={candidate.get('metrics', {}).get(metric)}; "
                              "production readiness unknown.")
+                tags = candidate.get("tags", {})
+                if tags.get("dataset_git_commit") and tags.get("dataset_dvc_md5"):
+                    lines.append(f"Candidate dataset: Git {tags['dataset_git_commit']}, "
+                                 f"DVC MD5 {tags['dataset_dvc_md5']}.")
+                else:
+                    lines.append("Candidate dataset version is unknown.")
             else:
                 lines.append(f"{name}: no finished candidate with {metric} was recorded.")
         elif name == "dvc_current_version":
@@ -62,6 +68,9 @@ def _evidence_summary(evidence: list[dict]) -> str:
                          f"{name}: no runs returned.")
         elif name == "k8s_diagnose":
             lines.append(f"{name}: {len(data.get('unhealthy', []))} unhealthy Pod(s) reported.")
+        elif name == "airflow_failed_tasks":
+            lines.append(f"{name}: {len(data.get('failed', []))} failed task(s) reported; "
+                         "inspect the recorded task details.")
         else:
             lines.append(f"{name}: returned recorded data; see evidence.")
     return " ".join(lines)
@@ -233,6 +242,12 @@ class Agent:
                     answer = _evidence_summary(evidence)
                     if any(not e["result"]["ok"] for e in evidence):
                         answer += " Checks without evidence remain unknown."
+                    if any(e["tool"] == "k8s_deployed_version" for e in evidence):
+                        answer += (" Deployed image and selected MLflow run linkage is unknown "
+                                   "unless the image records that run ID.")
+                    if any(e["tool"] == "mlflow_best_run" for e in evidence):
+                        answer += (" Retraining requires a real freshness or degradation signal; "
+                                   "no training was started by this assessment.")
                 return {"request_id": request_id, "answer": answer,
                         "evidence": evidence, "complete": bool(successful)}
             messages.append({"role": "assistant", "content": message.get("content"),
