@@ -19,6 +19,7 @@ logs/
 mlruns/
 artifacts/
 *.log
+data/raw/*.csv
 
 # Editors and OS
 .idea/

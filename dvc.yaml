@@ -1,0 +1,11 @@
+stages:
+  train:
+    cmd: python -m training.train --input data/raw/equipment.csv --model artifacts/model.json --metrics reports/metrics.json
+    deps:
+      - data/raw/equipment.csv
+      - training/train.py
+    outs:
+      - artifacts/model.json
+    metrics:
+      - reports/metrics.json
+
