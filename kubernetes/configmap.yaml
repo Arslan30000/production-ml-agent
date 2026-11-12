@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: equipment-api-config
+  namespace: mlops-agent
+data:
+  MODEL_PATH: /app/artifacts/model.json
+  APP_VERSION: "0.1.0"

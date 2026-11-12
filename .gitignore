@@ -20,6 +20,9 @@ mlruns/
 mlartifacts/
 mlflow.db*
 artifacts/
+airflow-output/
+airflow-home/
+*.generated
 *.log
 data/raw/*.csv
 

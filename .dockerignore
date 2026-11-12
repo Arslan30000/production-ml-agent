@@ -1,0 +1,11 @@
+.git
+.dvc
+.venv
+mlflow.db*
+mlartifacts
+mlruns
+airflow-output
+tests
+data
+reports
+__pycache__

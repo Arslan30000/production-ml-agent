@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: equipment-api
+  namespace: mlops-agent
+  labels:
+    app: equipment-api
+spec:
+  type: ClusterIP
+  selector:
+    app: equipment-api
+  ports:
+    - port: 80
+      targetPort: 8000

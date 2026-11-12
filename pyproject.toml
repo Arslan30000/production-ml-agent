@@ -11,6 +11,8 @@ dependencies = ["dvc>=3,<5", "mlflow>=3,<4"]
 
 [project.optional-dependencies]
 dev = ["pytest>=8,<10", "ruff>=0.8,<1"]
+airflow = ["apache-airflow>=3,<4"]
+api = ["fastapi>=0.115,<1", "uvicorn>=0.30,<1"]
 
 [tool.setuptools.packages.find]
 include = ["agent*", "training*"]
